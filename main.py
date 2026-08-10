@@ -8,8 +8,9 @@ from supabase import create_client, Client as SupabaseClient
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-API_ID = int(os.getenv("API_ID", "0"))
-API_HASH = os.getenv("API_HASH", "")
+# قراءة المتغيرات والتأكد من تحويل api_id إلى رقم صحيح تفادياً لأخطاء المصادقة
+API_ID = int(os.getenv("API_ID", "33363072"))
+API_HASH = os.getenv("API_HASH", "6822a1b168bfc677c717d0173c28cf1d")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
@@ -24,8 +25,8 @@ def init_full_db():
         supabase.table("enterprise_bots").select("id").limit(1).execute()
         supabase.table("maker_bans").select("user_id").limit(1).execute()
         supabase.table("bot_messages").select("id").limit(1).execute()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"ملاحظة أثناء التحقق من الجداول: {e}")
 
 init_full_db()
 
@@ -105,12 +106,12 @@ async def text_processor(client: Client, message: Message):
         user_sessions.pop(user_id, None)
 
         try:
-            temp_client = Client(f"val_{user_id}", api_id=API_ID, api_hash=API_HASH, bot_token=token)
+            temp_client = Client(f"val_{user_id}_{message.id}", api_id=API_ID, api_hash=API_HASH, bot_token=token)
             await temp_client.start()
             me = await temp_client.get_me()
             await temp_client.stop()
-        except Exception:
-            return await message.reply_text("❌ **التوكن غير صالح أو حدث خطأ. تأكد من صحة التوكن وأعد المحاولة.**")
+        except Exception as e:
+            return await message.reply_text(f"❌ **التوكن غير صالح أو حدث خطأ:**\n`{e}`\n\nتأكد من صحة التوكن وأعد المحاولة.")
 
         try:
             supabase.table("enterprise_bots").insert({
