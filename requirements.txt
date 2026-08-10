@@ -1,5 +1,4 @@
-Pyrogram==2.0.106
-tgcrypto==1.2.5
+aiogram==3.17.0
 supabase==2.9.0
 httpx==0.27.2
 requests==2.31.0
