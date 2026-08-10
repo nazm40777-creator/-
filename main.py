@@ -14,7 +14,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 DEV_ID = int(os.getenv("DEV_ID", "5126968608"))
 MAKER_BOT_USERNAME = "fde7Bot"
-DEV_USERNAME = "DevUsername"  # ضع هنا معرف المطور الخاص بك بدون @
+DEV_USERNAME = "toe7e"
 
 supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -202,7 +202,6 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
         if is_user_banned(u_id) and u_id != owner_id:
             return
 
-        # حفظ رسالة الترحيب
         if u_id == owner_id and f"waiting_welcome_{owner_id}" in user_sessions:
             user_sessions.pop(f"waiting_welcome_{owner_id}")
             try:
@@ -212,7 +211,6 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
                 await message.answer(f"خطأ: {e}")
             return
 
-        # حفظ الرد التلقائي
         if u_id == owner_id and f"waiting_autoreply_{owner_id}" in user_sessions:
             user_sessions.pop(f"waiting_autoreply_{owner_id}")
             try:
@@ -222,7 +220,6 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
                 await message.answer(f"خطأ: {e}")
             return
 
-        # حظر مستخدم
         if u_id == owner_id and f"waiting_ban_{owner_id}" in user_sessions:
             user_sessions.pop(f"waiting_ban_{owner_id}")
             try:
@@ -238,19 +235,17 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
                 await message.answer(f"خطأ في الآيدي المدخل: {e}")
             return
 
-        # معالجة الرد عبر الزر التفاعلي
         if u_id == owner_id and f"reply_target_{owner_id}" in user_sessions:
             session_data = user_sessions.pop(f"reply_target_{owner_id}")
             target_id = session_data["target_id"]
             try:
-                await custom_bot.send_message(target_id, f"💬 رد الإدارة:\n\n{message.text}")
+                await custom_bot.send_message(target_id, message.text)
                 await message.reply("✅ تم إرسال الرد للمستخدم بنجاح.")
                 return
             except Exception as e:
                 await message.reply(f"❌ تعذر إرسال الرد: {e}")
                 return
 
-        # الإذاعة
         if u_id == owner_id and f"custom_broadcast_{owner_id}" in user_sessions:
             user_sessions.pop(f"custom_broadcast_{owner_id}")
             b_text = message.text
@@ -271,7 +266,6 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
             await status_msg.edit_text(f"✅ تمت الإذاعة بنجاح!\nعدد المستلمين: {sent} مشترك.")
             return
 
-        # نظام الرد العادي أو عبر Reply التقليدي للمالك
         if u_id == owner_id:
             if message.reply_to_message:
                 target_id = None
@@ -285,7 +279,7 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
                 
                 if target_id:
                     try:
-                        await custom_bot.send_message(target_id, f"💬 رد الإدارة:\n\n{message.text}")
+                        await custom_bot.send_message(target_id, message.text)
                         await message.reply("✅ تم إرسال الرد للمستخدم بنجاح.")
                         return
                     except Exception as e:
@@ -300,10 +294,8 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
             except:
                 auto_reply = None
 
-            # 1. إرسال نص رسالة المستخدم أولاً بشكل منفصل وخفيف
             await custom_bot.send_message(owner_id, message.text)
 
-            # 2. إرسال معلومات العضو في رسالة تحتها مباشرة مع أزرار التحكم والرد
             info_markup = InlineKeyboardMarkup(inline_keyboard=[
                 [
                     InlineKeyboardButton(text="رد 💬", callback_data=f"reply_user_{u_id}"),
