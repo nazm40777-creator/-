@@ -8,7 +8,7 @@ from supabase import create_client, Client as SupabaseClient
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# قراءة المتغيرات والتأكد من تحويل api_id و dev_id إلى أرقام صحيحة تفادياً لأخطاء المصادقة والصلاحيات
+# قراءة المتغيرات وتأكد من صحتها في Railway
 API_ID = int(os.getenv("API_ID", "33363072"))
 API_HASH = os.getenv("API_HASH", "6822a1b168bfc677c717d0173c28cf1d")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -336,11 +336,14 @@ async def bot_info(client: Client, callback: CallbackQuery):
 async def back_home(client: Client, callback: CallbackQuery):
     await start_handler(client, callback.message)
 
-# التشغيل النهائي
+# التشغيل النهائي باستخدام السياق الآمن المحدث
 async def main():
-    await bot.start()
-    logger.info("🚀 Full Enterprise Bot Maker started successfully!")
-    await idle()
+    async with bot:
+        logger.info("🚀 Full Enterprise Bot Maker started successfully!")
+        await idle()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user.")
