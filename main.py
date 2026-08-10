@@ -30,7 +30,8 @@ def init_full_db():
 
 init_full_db()
 
-bot = Client("full_enterprise_maker", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+# استخدام الذاكرة المؤقتة للجلسة لتفادي مشاكل الحفظ والسحب على السحابة
+bot = Client(":memory:", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 user_sessions = {}
 
 def is_banned(user_id: int) -> bool:
@@ -336,7 +337,7 @@ async def bot_info(client: Client, callback: CallbackQuery):
 async def back_home(client: Client, callback: CallbackQuery):
     await start_handler(client, callback.message)
 
-# التشغيل النهائي باستخدام السياق الآمن المحدث
+# التشغيل النهائي باستخدام السياق الآمن وجلسة الذاكرة المؤقتة
 async def main():
     async with bot:
         logger.info("🚀 Full Enterprise Bot Maker started successfully!")
