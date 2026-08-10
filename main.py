@@ -37,16 +37,14 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
     def register_custom_user(u_id: int, name: str, uname: str):
         try:
             res = supabase.table("custom_bot_users").select("user_id").eq("bot_id", bot_id).eq("user_id", u_id).execute()
-            is_new = len(res.data) == 0
             supabase.table("custom_bot_users").upsert({
                 "bot_id": bot_id,
                 "user_id": u_id,
                 "full_name": name,
                 "username": uname
             }, on_conflict="bot_id,user_id").execute()
-            return is_new
         except Exception:
-            return False
+            pass
 
     def is_user_banned(u_id: int) -> bool:
         try:
@@ -60,6 +58,7 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
         u_id = message.from_user.id
         uname = message.from_user.username or "None"
         name = message.from_user.first_name
+        user_display = f"@{uname}" if uname != "None" else name
 
         if is_user_banned(u_id) and u_id != owner_id:
             return await message.answer("عذراً، تم حظرك من استخدام هذا البوت.")
@@ -70,19 +69,23 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
             markup = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🤖 إدارة البوت", callback_data="cb_manage"), InlineKeyboardButton(text="📊 الإحصائيات", callback_data="cb_stats")],
                 [InlineKeyboardButton(text="📨 إذاعة للمستخدمين", callback_data="cb_broadcast"), InlineKeyboardButton(text="👥 إدارة المستخدمين", callback_data="cb_users")],
-                [InlineKeyboardButton(text="👋 تغيير رسالة الترحيب", callback_data="cb_welcome"), InlineKeyboardButton(text="💬 تغيير الرد التلقائي", callback_data="cb_autoreply")],
-                [InlineKeyboardButton(text="🚷 الحظر وفك الحظر", callback_data="cb_bans"), InlineKeyboardButton(text="⚙️ إعدادات متقدمة", callback_data="cb_settings")],
-                [InlineKeyboardButton(text="⏸ إيقاف/تشغيل البوت", callback_data="cb_toggle"), InlineKeyboardButton(text="🗑 حذف البوت نهائياً", callback_data="cb_delete")],
+                [InlineKeyboardButton(text="👋 تغيير الترحيب", callback_data="cb_welcome"), InlineKeyboardButton(text="💬 الرد التلقائي", callback_data="cb_autoreply")],
+                [InlineKeyboardButton(text="🚷 الحظر وفك الحظر", callback_data="cb_bans"), InlineKeyboardButton(text="⏸ إيقاف/تشغيل", callback_data="cb_toggle")],
+                [InlineKeyboardButton(text="🗑 حذف البوت نهائياً", callback_data="cb_delete")],
                 [InlineKeyboardButton(text="✉️ التواصل مع المطور", url=f"https://t.me/{DEV_USERNAME}")]
             ])
             await message.answer("⟡ : أهلاً بك أيها المالك في لوحة التحكم الخاصة بوتك . 💜", reply_markup=markup)
         else:
             try:
-                res = supabase.table("custom_bot_settings").select("welcome_text, auto_reply").eq("bot_id", bot_id).execute()
+                res = supabase.table("custom_bot_settings").select("welcome_text").eq("bot_id", bot_id).execute()
                 data = res.data[0] if res.data else {}
-                welcome_msg = data.get("welcome_text") or "مرحباً بك عزيزي في بوت التواصل الرسمي.\nأرسل رسالتك أو استفسارك وسيتم تحويله مباشرة إلى الإدارة."
+                custom_welcome = data.get("welcome_text")
+                if not custom_welcome:
+                    welcome_msg = f"• اهلا بك ({user_display}) في بوت السايت الخاص بي ❤️\n\n- ارسل رسالتك بهويه مجهوله وسوف يرد عليك باقرب وقت 📢"
+                else:
+                    welcome_msg = custom_welcome.replace("{name}", name).replace("{username}", user_display)
             except:
-                welcome_msg = "مرحباً بك عزيزي في بوت التواصل الرسمي.\nأرسل رسالتك أو استفسارك وسيتم تحويله مباشرة إلى الإدارة."
+                welcome_msg = f"• اهلا بك ({user_display}) في بوت السايت الخاص بي ❤️\n\n- ارسل رسالتك بهويه مجهوله وسوف يرد عليك باقرب وقت 📢"
 
             promo_markup = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="صنع بوتك الخاص من هنا ⚡", url=f"https://t.me/{MAKER_BOT_USERNAME}")]
@@ -117,15 +120,13 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
             await callback.message.edit_text(u_text, reply_markup=back_btn)
         elif action == "cb_welcome":
             user_sessions[f"waiting_welcome_{owner_id}"] = {"bot_id": bot_id}
-            await callback.message.edit_text("👋 أرسل الآن النص الجديد لرسالة الترحيب:", reply_markup=back_btn)
+            await callback.message.edit_text("👋 أرسل النص الجديد لرسالة الترحيب:\n(ملاحظة: يمكنك استخدام `{name}` لاسم المستخدم أو `{username}` لمعرفه)", reply_markup=back_btn)
         elif action == "cb_autoreply":
             user_sessions[f"waiting_autoreply_{owner_id}"] = {"bot_id": bot_id}
-            await callback.message.edit_text("💬 أرسل الآن نص الرد التلقائي الجديد:", reply_markup=back_btn)
+            await callback.message.edit_text("💬 أرسل الآن نص الرد التلقائي الجديد للمشتركين:", reply_markup=back_btn)
         elif action == "cb_bans":
             user_sessions[f"waiting_ban_{owner_id}"] = {"bot_id": bot_id}
             await callback.message.edit_text("🚷 أرسل (آيدي) المستخدم المراد حظره أو فك حظره:", reply_markup=back_btn)
-        elif action == "cb_settings":
-            await callback.message.edit_text("⚙️ الإعدادات المتقدمة نشطة ومؤمنة تماماً.", reply_markup=back_btn)
         elif action == "cb_toggle":
             try:
                 res = supabase.table("enterprise_bots").select("is_active").eq("id", bot_id).execute()
@@ -145,9 +146,9 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
             markup = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🤖 إدارة البوت", callback_data="cb_manage"), InlineKeyboardButton(text="📊 الإحصائيات", callback_data="cb_stats")],
                 [InlineKeyboardButton(text="📨 إذاعة للمستخدمين", callback_data="cb_broadcast"), InlineKeyboardButton(text="👥 إدارة المستخدمين", callback_data="cb_users")],
-                [InlineKeyboardButton(text="👋 تغيير رسالة الترحيب", callback_data="cb_welcome"), InlineKeyboardButton(text="💬 تغيير الرد التلقائي", callback_data="cb_autoreply")],
-                [InlineKeyboardButton(text="🚷 الحظر وفك الحظر", callback_data="cb_bans"), InlineKeyboardButton(text="⚙️ إعدادات متقدمة", callback_data="cb_settings")],
-                [InlineKeyboardButton(text="⏸ إيقاف/تشغيل البوت", callback_data="cb_toggle"), InlineKeyboardButton(text="🗑 حذف البوت نهائياً", callback_data="cb_delete")],
+                [InlineKeyboardButton(text="👋 تغيير الترحيب", callback_data="cb_welcome"), InlineKeyboardButton(text="💬 الرد التلقائي", callback_data="cb_autoreply")],
+                [InlineKeyboardButton(text="🚷 الحظر وفك الحظر", callback_data="cb_bans"), InlineKeyboardButton(text="⏸ إيقاف/تشغيل", callback_data="cb_toggle")],
+                [InlineKeyboardButton(text="🗑 حذف البوت نهائياً", callback_data="cb_delete")],
                 [InlineKeyboardButton(text="✉️ التواصل مع المطور", url=f"https://t.me/{DEV_USERNAME}")]
             ])
             await callback.message.edit_text("⟡ : أهلاً بك أيها المالك في لوحة التحكم الخاصة بوتك . 💜", reply_markup=markup)
@@ -290,9 +291,12 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
         else:
             try:
                 res_s = supabase.table("custom_bot_settings").select("auto_reply").eq("bot_id", bot_id).execute()
-                auto_reply = res_s.data[0].get("auto_reply") if res_s.data else None
+                data_s = res_s.data[0] if res_s.data else {}
+                auto_reply = data_s.get("auto_reply")
+                if not auto_reply:
+                    auto_reply = "اهلا حبيب شوي و ارد 🌷."
             except:
-                auto_reply = None
+                auto_reply = "اهلا حبيب شوي و ارد 🌷."
 
             await custom_bot.send_message(owner_id, message.text)
 
@@ -316,11 +320,7 @@ async def start_user_bot_polling(bot_id: int, token: str, owner_id: int, bot_use
             promo_markup = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="صنع بوتك الخاص من هنا ⚡", url=f"https://t.me/{MAKER_BOT_USERNAME}")]
             ])
-
-            if auto_reply:
-                await message.answer(auto_reply, reply_markup=promo_markup)
-            else:
-                await message.answer("✅ تم إرسال رسالتك إلى إدارة البوت بنجاح.", reply_markup=promo_markup)
+            await message.answer(auto_reply, reply_markup=promo_markup)
 
     try:
         running_custom_bots[bot_id] = custom_bot
@@ -355,21 +355,26 @@ async def start_handler(message: Message):
         pass
 
     if user_id == DEV_ID:
-        text = "لوحة تحكم مالك المنصة الرئيسي (المطور):\nأهلاً بك، تحكم كامل وخيارات واسعة لإدارة المنصة."
+        text = "⚙️ لوحة تحكم مالك المنصة الرئيسي (المطور):\nأهلاً بك، تحكم كامل وخيارات واسعة لإدارة المنصة."
         markup = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="إحصائيات المنصة", callback_data="dev_stats"), InlineKeyboardButton(text="إذاعة عامة للمنصة", callback_data="dev_broadcast")],
-            [InlineKeyboardButton(text="إدارة البوتات", callback_data="dev_all_bots"), InlineKeyboardButton(text="إدارة الحظر", callback_data="dev_ban_menu")]
+            [InlineKeyboardButton(text="📊 إحصائيات المنصة", callback_data="dev_stats"), InlineKeyboardButton(text="📨 إذاعة عامة", callback_data="dev_broadcast")],
+            [InlineKeyboardButton(text="🤖 إدارة البوتات", callback_data="dev_all_bots"), InlineKeyboardButton(text="🚷 إدارة الحظر", callback_data="dev_ban_menu")]
         ])
         await message.answer(text, reply_markup=markup)
     else:
+        name = message.from_user.first_name
         text = (
-            "مرحباً بك في منصة صناعة بوتات التواصل الاحترافية والعملاقة.\n\n"
-            "أنشئ بوتك الخاص الآن وتمتع بلوحة تحكم متكاملة وعظيمة!"
+            f"• اهلا بك ({name}) .\n"
+            "• في البوت الرسمي لصنع بوتات السايت ، 📌\n"
+            "• يحتوي البوت الذي يتم صنعه على مميزات متميزة وسرعة عاليةه ويتميز بعدم توقف البوت مدى الحياة ، 📢\n\n"
+            "---------------------------------\n\n"
+            f"🤖 عجبك البوت؟ اصنع بوتك الخاص مجاناً!\n@{MAKER_BOT_USERNAME}"
         )
         markup = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="إنشاء بوت تواصل جديد", callback_data="create_new_bot")],
-            [InlineKeyboardButton(text="بوتاتي المصنوعة وإدارتها", callback_data="my_custom_bots")],
-            [InlineKeyboardButton(text="معلومات المنصة", callback_data="bot_info")]
+            [InlineKeyboardButton(text="🤖 صنع بوت جديد", callback_data="create_new_bot")],
+            [InlineKeyboardButton(text="📋 قائمة بوتاتك", callback_data="my_custom_bots")],
+            [InlineKeyboardButton(text="❓ كيف اصنع بوت؟", callback_data="bot_info")],
+            [InlineKeyboardButton(text="🌐 Change Language | تغيير اللغة", callback_data="change_lang")]
         ])
         await message.answer(text, reply_markup=markup)
 
@@ -377,7 +382,7 @@ async def start_handler(message: Message):
 async def step_create_bot(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_sessions[user_id] = {"state": "waiting_for_token"}
-    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="إلغاء والعودة", callback_data="back_home")]])
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="إلغاء والعودة 🔙", callback_data="back_home")]])
     await callback.message.edit_text(
         "خطوة إنشاء بوت تواصل جديد:\n\n"
         "أرسل الآن توكن البوت (Bot Token) الخاص بك من المطور @BotFather:",
@@ -421,7 +426,7 @@ async def text_processor(message: Message):
         except Exception as e:
             return await message.answer(f"خطأ في قاعدة البيانات:\n`{e}`")
 
-        markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="الذهاب إلى بوتاتي المصنوعة", callback_data="my_custom_bots")]])
+        markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="الذهاب إلى قائمة بوتاتك 📋", callback_data="my_custom_bots")]])
         await message.answer(
             f"تم إنشاء وتشغيل بوتك الاحترافي بنجاح تام!\n\n"
             f"اسم البوت: {me.first_name}\n"
@@ -459,8 +464,8 @@ async def list_user_bots(callback: CallbackQuery):
 
     if not bots:
         markup = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="إنشاء بوت جديد", callback_data="create_new_bot")],
-            [InlineKeyboardButton(text="القائمة الرئيسية", callback_data="back_home")]
+            [InlineKeyboardButton(text="🤖 صنع بوت جديد", callback_data="create_new_bot")],
+            [InlineKeyboardButton(text="القائمة الرئيسية 🔙", callback_data="back_home")]
         ])
         return await callback.message.edit_text("لا توجد أي بوتات مصنوعة بواسطة حسابك حتى الآن.", reply_markup=markup)
 
@@ -468,9 +473,9 @@ async def list_user_bots(callback: CallbackQuery):
     for b in bots:
         status = "يعمل 🟢" if b["is_active"] else "متوقف ⏸"
         buttons.append([InlineKeyboardButton(text=f"{status} | @{b['bot_username']}", callback_data=f"manage_bot_{b['id']}")])
-    buttons.append([InlineKeyboardButton(text="إنشاء بوت آخر", callback_data="create_new_bot"), InlineKeyboardButton(text="القائمة الرئيسية", callback_data="back_home")])
+    buttons.append([InlineKeyboardButton(text="🤖 صنع بوت آخر", callback_data="create_new_bot"), InlineKeyboardButton(text="القائمة الرئيسية 🔙", callback_data="back_home")])
 
-    await callback.message.edit_text("قائمة بوتاتك المصنوعة:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await callback.message.edit_text("📋 قائمة بوتاتك المصنوعة والإدارة الكاملة:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("manage_bot_"))
@@ -485,13 +490,13 @@ async def manage_single_bot(callback: CallbackQuery):
         return await callback.answer("خطأ في الاتصال!", show_alert=True)
 
     text = (
-        f"إدارة البوت: @{b_data['bot_username']}\n\n"
+        f"🤖 إدارة البوت: @{b_data['bot_username']}\n\n"
         f"الاسم: {b_data['bot_name']}\n"
         f"الحالة: {'يعمل 🟢' if b_data['is_active'] else 'متوقف ⏸'}\n"
     )
     markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="حذف البوت نهائياً", callback_data=f"delete_bot_{bot_id}")],
-        [InlineKeyboardButton(text="العودة لقائمة بوتاتي", callback_data="my_custom_bots")]
+        [InlineKeyboardButton(text="🗑 حذف البوت نهائياً", callback_data=f"delete_bot_{bot_id}")],
+        [InlineKeyboardButton(text="العودة لقائمة بوتاتي 🔙", callback_data="my_custom_bots")]
     ])
     await callback.message.edit_text(text, reply_markup=markup)
     await callback.answer()
@@ -509,6 +514,43 @@ async def delete_bot_action(callback: CallbackQuery):
     except Exception as e:
         await callback.answer(f"خطأ: {e}", show_alert=True)
 
+@dp.callback_query(F.data == "dev_all_bots")
+async def dev_all_bots_handler(callback: CallbackQuery):
+    if callback.from_user.id != DEV_ID:
+        return
+    try:
+        res = supabase.table("enterprise_bots").select("*").execute()
+        bots = res.data
+    except:
+        bots = []
+
+    if not bots:
+        markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع 🔙", callback_data="back_home")]])
+        return await callback.message.edit_text("لا توجد بوتات مسجلة في المنصة حالياً.", reply_markup=markup)
+
+    buttons = []
+    for b in bots[:20]:
+        status = "🟢" if b["is_active"] else "⏸"
+        buttons.append([InlineKeyboardButton(text=f"{status} @{b['bot_username']} (Owner: {b['owner_id']})", callback_data=f"dev_del_bot_{b['id']}")])
+    buttons.append([InlineKeyboardButton(text="رجوع 🔙", callback_data="back_home")])
+    await callback.message.edit_text("🤖 إدارات جميع بوتات المنصة (اضغط لحذف البوت كأدمن):", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await callback.answer()
+
+@dp.callback_query(F.data.startswith("dev_del_bot_"))
+async def dev_del_bot_action(callback: CallbackQuery):
+    if callback.from_user.id != DEV_ID:
+        return
+    bot_id = int(callback.data.split("_")[3])
+    try:
+        if bot_id in running_custom_bots:
+            await running_custom_bots[bot_id].session.close()
+            del running_custom_bots[bot_id]
+        supabase.table("enterprise_bots").delete().eq("id", bot_id).execute()
+        await callback.answer("تم حذف البوت من المنصة بنجاح.", show_alert=True)
+        await dev_all_bots_handler(callback)
+    except Exception as e:
+        await callback.answer(f"خطأ: {e}", show_alert=True)
+
 @dp.callback_query(F.data == "dev_stats")
 async def dev_stats_handler(callback: CallbackQuery):
     if callback.from_user.id != DEV_ID:
@@ -519,8 +561,8 @@ async def dev_stats_handler(callback: CallbackQuery):
     except:
         users = bots = 0
 
-    text = f"إحصائيات المنصة:\n\nإجمالي المستخدمين: {users}\nإجمالي البوتات: {bots}"
-    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع", callback_data="back_home")]])
+    text = f"📊 إحصائيات المنصة الشاملة:\n\n- إجمالي المستخدمين: {users}\n- إجمالي البوتات المصنوعة: {bots}"
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع 🔙", callback_data="back_home")]])
     await callback.message.edit_text(text, reply_markup=markup)
     await callback.answer()
 
@@ -529,23 +571,27 @@ async def dev_broadcast_handler(callback: CallbackQuery):
     if callback.from_user.id != DEV_ID:
         return
     user_sessions[DEV_ID] = {"state": "dev_broadcasting"}
-    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="إلغاء", callback_data="back_home")]])
-    await callback.message.edit_text("أرسل الآن نص الإذاعة العامة لجميع مستخدمي المنصة:", reply_markup=markup)
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="إلغاء 🔙", callback_data="back_home")]])
+    await callback.message.edit_text("📨 أرسل الآن نص الإذاعة العامة لجميع مستخدمي المنصة:", reply_markup=markup)
     await callback.answer()
 
 @dp.callback_query(F.data == "dev_ban_menu")
 async def dev_ban_menu(callback: CallbackQuery):
     if callback.from_user.id != DEV_ID:
         return
-    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع", callback_data="back_home")]])
-    await callback.message.edit_text("قسيمة حظر مستخدمي المنصة نشطة.", reply_markup=markup)
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع 🔙", callback_data="back_home")]])
+    await callback.message.edit_text("🚷 إدارة الحظر العامة للمنصة نشطة ومؤمنة.", reply_markup=markup)
     await callback.answer()
 
 @dp.callback_query(F.data == "bot_info")
 async def bot_info(callback: CallbackQuery):
-    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع", callback_data="back_home")]])
-    await callback.message.edit_text("منصة صناعة بوتات التواصل الاحترافية والعملاقة.", reply_markup=markup)
+    markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="رجوع 🔙", callback_data="back_home")]])
+    await callback.message.edit_text("• هذه المنصة مخصصة لصناعة بوتات التواصل الاحترافية والسايت بسرعة عالية واستقرار تام مدى الحياة ⚡", reply_markup=markup)
     await callback.answer()
+
+@dp.callback_query(F.data == "change_lang")
+async def change_lang(callback: CallbackQuery):
+    await callback.answer("اللغة الحالية هي العربية 🇮🇶", show_alert=True)
 
 @dp.callback_query(F.data == "back_home")
 async def back_home(callback: CallbackQuery):
