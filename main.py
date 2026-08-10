@@ -8,13 +8,13 @@ from supabase import create_client, Client as SupabaseClient
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# قراءة المتغيرات والتأكد من تحويل api_id إلى رقم صحيح تفادياً لأخطاء المصادقة
+# قراءة المتغيرات والتأكد من تحويل api_id و dev_id إلى أرقام صحيحة تفادياً لأخطاء المصادقة والصلاحيات
 API_ID = int(os.getenv("API_ID", "33363072"))
 API_HASH = os.getenv("API_HASH", "6822a1b168bfc677c717d0173c28cf1d")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-DEV_ID = int(os.getenv("DEV_ID", "0"))
+DEV_ID = int(os.getenv("DEV_ID", "5126968608"))
 
 supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
 
