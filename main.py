@@ -11,24 +11,20 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 from aiogram.enums import ChatType
+
 from supabase import create_client, Client as SupabaseClient
-
-
-# =========================================================
-# إعداد التسجيل
-# =========================================================
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-
-logger = logging.getLogger(__name__)
 
 
 # =========================================================
 # الإعدادات
 # =========================================================
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
@@ -41,39 +37,28 @@ DEV_USERNAME = "toe7e"
 
 
 # =========================================================
-# Supabase
+# الاتصال
 # =========================================================
 
 supabase: SupabaseClient = create_client(
     SUPABASE_URL,
-    SUPABASE_KEY,
+    SUPABASE_KEY
 )
-
-
-# =========================================================
-# البوت الرئيسي
-# =========================================================
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
 
 # =========================================================
-# الجلسات
+# التخزين المؤقت
 # =========================================================
 
 user_sessions = {}
 
-
-# =========================================================
-# البوتات المصنوعة التي تعمل حالياً
-# =========================================================
-
+# البوتات التي تعمل حالياً
 running_custom_bots = {}
 
-
-# =========================================================
-# ربط رسالة المالك بالمستخدم الحقيقي
+# ربط رسالة المستخدم المنسوخة عند المالك بالمستخدم الحقيقي
 #
 # المفتاح:
 # (bot_id, owner_id, owner_message_id)
@@ -81,14 +66,13 @@ running_custom_bots = {}
 # القيمة:
 # user_id
 #
-# هذا هو النظام الجديد للرد المباشر.
-# =========================================================
-
+# بهذه الطريقة عندما يضغط المالك Reply على رسالة المشترك
+# نعرف إلى أي مستخدم يجب إرسال الرد.
 reply_targets = {}
 
 
 # =========================================================
-# فحص حظر مستخدم المنصة
+# أدوات عامة
 # =========================================================
 
 def is_banned(user_id: int) -> bool:
@@ -106,70 +90,135 @@ def is_banned(user_id: int) -> bool:
         return False
 
 
-# =========================================================
-# لوحة صاحب البوت
-# =========================================================
-
 def get_owner_panel() -> InlineKeyboardMarkup:
+    """
+    لوحة تحكم صاحب البوت.
+    """
 
     return InlineKeyboardMarkup(
         inline_keyboard=[
-
             [
                 InlineKeyboardButton(
                     text="🤖 إدارة البوت",
-                    callback_data="cb_manage",
+                    callback_data="cb_manage"
                 ),
                 InlineKeyboardButton(
                     text="📊 الإحصائيات",
-                    callback_data="cb_stats",
+                    callback_data="cb_stats"
                 ),
             ],
-
             [
                 InlineKeyboardButton(
                     text="📨 إذاعة للمستخدمين",
-                    callback_data="cb_broadcast",
+                    callback_data="cb_broadcast"
                 ),
                 InlineKeyboardButton(
                     text="👥 إدارة المستخدمين",
-                    callback_data="cb_users",
+                    callback_data="cb_users"
                 ),
             ],
-
             [
                 InlineKeyboardButton(
                     text="👋 تغيير الترحيب",
-                    callback_data="cb_welcome",
+                    callback_data="cb_welcome"
                 ),
                 InlineKeyboardButton(
                     text="💬 الرد التلقائي",
-                    callback_data="cb_autoreply",
+                    callback_data="cb_autoreply"
                 ),
             ],
-
             [
                 InlineKeyboardButton(
                     text="🚷 الحظر وفك الحظر",
-                    callback_data="cb_bans",
+                    callback_data="cb_bans"
                 ),
                 InlineKeyboardButton(
                     text="⏸ إيقاف/تشغيل",
-                    callback_data="cb_toggle",
+                    callback_data="cb_toggle"
                 ),
             ],
-
             [
                 InlineKeyboardButton(
                     text="🗑 حذف البوت نهائياً",
-                    callback_data="cb_delete",
+                    callback_data="cb_delete"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="✉️ التواصل مع المطور",
-                    url=f"https://t.me/{DEV_USERNAME}",
+                    url=f"https://t.me/{DEV_USERNAME}"
+                )
+            ],
+        ]
+    )
+
+
+def get_back_button(callback_data="cb_back") -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="العودة للقائمة الرئيسية 🔙",
+                    callback_data=callback_data
+                )
+            ]
+        ]
+    )
+
+
+def get_main_menu(user_id: int) -> InlineKeyboardMarkup:
+
+    if user_id == DEV_ID:
+
+        return InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📊 إحصائيات المنصة",
+                        callback_data="dev_stats"
+                    ),
+                    InlineKeyboardButton(
+                        text="📨 إذاعة عامة",
+                        callback_data="dev_broadcast"
+                    ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🤖 إدارة البوتات",
+                        callback_data="dev_all_bots"
+                    ),
+                    InlineKeyboardButton(
+                        text="🚷 إدارة الحظر",
+                        callback_data="dev_ban_menu"
+                    ),
+                ],
+            ]
+        )
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🤖 صنع بوت جديد",
+                    callback_data="create_new_bot"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="📋 قائمة بوتاتك",
+                    callback_data="my_custom_bots"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="❓ كيفية صنع بوت",
+                    callback_data="bot_info"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🌐 Change Language | تغيير اللغة",
+                    callback_data="change_lang"
                 )
             ],
         ]
@@ -177,7 +226,7 @@ def get_owner_panel() -> InlineKeyboardMarkup:
 
 
 # =========================================================
-# تشغيل بوت المستخدم
+# تشغيل البوت المصنوع
 # =========================================================
 
 async def start_user_bot_polling(
@@ -197,7 +246,7 @@ async def start_user_bot_polling(
     def register_custom_user(
         u_id: int,
         name: str,
-        uname: str,
+        uname: str
     ):
 
         try:
@@ -211,15 +260,14 @@ async def start_user_bot_polling(
                     "full_name": name,
                     "username": uname,
                 },
-                on_conflict="bot_id,user_id",
+                on_conflict="bot_id,user_id"
             ).execute()
 
         except Exception:
             pass
 
-
     # =====================================================
-    # فحص حظر مستخدم من بوت معين
+    # فحص حظر مستخدم داخل البوت
     # =====================================================
 
     def is_user_banned(u_id: int) -> bool:
@@ -239,14 +287,13 @@ async def start_user_bot_polling(
         except Exception:
             return False
 
-
     # =====================================================
-    # START للبوت المصنوع
+    # /start للبوت المصنوع
     # =====================================================
 
     @custom_dp.message(
         Command("start"),
-        F.chat.type == ChatType.PRIVATE,
+        F.chat.type == ChatType.PRIVATE
     )
     async def custom_start(message: Message):
 
@@ -268,49 +315,35 @@ async def start_user_bot_polling(
             else name
         )
 
-
-        # -------------------------------------------------
-        # الحظر
-        # -------------------------------------------------
-
+        # فحص الحظر
         if is_user_banned(u_id) and u_id != owner_id:
-
             return await message.answer(
                 "عذراً، تم حظرك من استخدام هذا البوت."
             )
 
-
-        # -------------------------------------------------
         # تسجيل المستخدم
-        # -------------------------------------------------
-
         register_custom_user(
             u_id,
             name,
-            uname,
+            uname
         )
 
-
-        # -------------------------------------------------
-        # المالك
-        # -------------------------------------------------
+        # =================================================
+        # إذا كان صاحب البوت
+        # =================================================
 
         if u_id == owner_id:
 
             await message.answer(
-                "⟡ أهلاً بك أيها المالك في لوحة التحكم الخاصة ببوتك 💜\n\n"
-                "📩 ملاحظة مهمة:\n"
-                "للرد على أي مشترك، اضغط Reply مباشرةً على "
-                "رسالة المشترك وأرسل ردك.",
-                reply_markup=get_owner_panel(),
+                "⟡ أهلاً بك أيها المالك في لوحة التحكم الخاصة ببوتك 💜",
+                reply_markup=get_owner_panel()
             )
 
             return
 
-
-        # -------------------------------------------------
+        # =================================================
         # جلب الترحيب
-        # -------------------------------------------------
+        # =================================================
 
         try:
 
@@ -344,86 +377,60 @@ async def start_user_bot_polling(
             else:
 
                 welcome_msg = (
-                    f"• اهلا بك ({user_display}) "
-                    "في بوت السايت الخاص بي ❤️\n\n"
-                    "• ارسل رسالتك بهوية مجهولة "
-                    "وسوف يرد عليك بأقرب وقت 📢"
+                    f"• اهلا بك ({user_display}) في بوت السايت الخاص بي ❤️\n\n"
+                    "• ارسل رسالتك بهوية مجهولة وسوف يرد عليك بأقرب وقت 📢"
                 )
 
         except Exception:
 
             welcome_msg = (
-                f"• اهلا بك ({user_display}) "
-                "في بوت السايت الخاص بي ❤️\n\n"
-                "• ارسل رسالتك بهوية مجهولة "
-                "وسوف يرد عليك بأقرب وقت 📢"
+                f"• اهلا بك ({user_display}) في بوت السايت الخاص بي ❤️\n\n"
+                "• ارسل رسالتك بهوية مجهولة وسوف يرد عليك بأقرب وقت 📢"
             )
 
-
-        # -------------------------------------------------
-        # زر صنع بوت
-        # -------------------------------------------------
+        # =================================================
+        # زر الصانع
+        # =================================================
 
         promo_markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
                         text="🤖 صنع بوتك الخاص من هنا ⚡",
-                        url=f"https://t.me/{MAKER_BOT_USERNAME}",
+                        url=f"https://t.me/{MAKER_BOT_USERNAME}"
                     )
                 ]
             ]
         )
 
-
         await message.answer(
             welcome_msg,
-            reply_markup=promo_markup,
+            reply_markup=promo_markup
         )
 
-
     # =====================================================
-    # لوحة التحكم - CALLBACKS
+    # لوحة تحكم صاحب البوت
     # =====================================================
 
     @custom_dp.callback_query(
         F.data.startswith("cb_"),
-        F.message.chat.type == ChatType.PRIVATE,
+        F.message.chat.type == ChatType.PRIVATE
     )
     async def custom_callbacks(
         callback: CallbackQuery
     ):
 
-        # -------------------------------------------------
         # المالك فقط
-        # -------------------------------------------------
-
         if callback.from_user.id != owner_id:
 
             return await callback.answer(
                 "عذراً، هذه اللوحة خاصة بمالك البوت فقط.",
-                show_alert=True,
+                show_alert=True
             )
-
 
         action = callback.data
 
-
-        # -------------------------------------------------
-        # زر الرجوع
-        # -------------------------------------------------
-
-        back_btn = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="العودة للقائمة الرئيسية 🔙",
-                        callback_data="cb_back",
-                    )
-                ]
-            ]
-        )
-
+        back_btn = get_back_button()
 
         # =================================================
         # إدارة البوت
@@ -431,20 +438,32 @@ async def start_user_bot_polling(
 
         if action == "cb_manage":
 
+            try:
+
+                res = (
+                    supabase.table("enterprise_bots")
+                    .select("is_active")
+                    .eq("id", bot_id)
+                    .execute()
+                )
+
+                active = (
+                    res.data[0]["is_active"]
+                    if res.data
+                    else True
+                )
+
+            except Exception:
+                active = True
+
             await callback.message.edit_text(
-
-                f"🤖 معلومات وإدارة البوت\n\n"
-                f"━━━━━━━━━━━━━━\n"
-                f"🔹 المعرف: @{bot_username}\n"
-                f"🟢 الحالة: يعمل بنجاح\n"
-                f"━━━━━━━━━━━━━━\n\n"
-                f"📩 الرد على المشتركين:\n"
-                f"اضغط Reply مباشرةً على رسالة المشترك "
-                f"ولا تحتاج إلى زر رد.",
-
-                reply_markup=back_btn,
+                "🤖 إدارة البوت\n\n"
+                f"• المعرف: @{bot_username}\n"
+                f"• الحالة: {'🟢 يعمل' if active else '⏸ متوقف'}\n\n"
+                "يمكنك التحكم بالترحيب والرد التلقائي "
+                "والمستخدمين والإذاعة من القائمة الرئيسية.",
+                reply_markup=back_btn
             )
-
 
         # =================================================
         # الإحصائيات
@@ -454,35 +473,27 @@ async def start_user_bot_polling(
 
             try:
 
-                users_data = (
-                    supabase.table(
-                        "custom_bot_users"
-                    )
+                users = (
+                    supabase.table("custom_bot_users")
                     .select("user_id")
                     .eq("bot_id", bot_id)
                     .execute()
                     .data
                 )
 
-                subs = len(users_data)
+                subscribers = len(users)
 
             except Exception:
 
-                subs = 0
-
+                subscribers = 0
 
             await callback.message.edit_text(
-
-                f"📊 إحصائيات بوتك\n\n"
-                f"━━━━━━━━━━━━━━\n"
-                f"👥 عدد المشتركين: {subs}\n"
+                "📊 إحصائيات البوت\n\n"
+                f"👥 عدد المشتركين: {subscribers}\n"
                 f"🤖 البوت: @{bot_username}\n"
-                f"🟢 الحالة: يعمل\n"
-                f"━━━━━━━━━━━━━━",
-
-                reply_markup=back_btn,
+                "🟢 النظام: يعمل",
+                reply_markup=back_btn
             )
-
 
         # =================================================
         # الإذاعة
@@ -494,23 +505,18 @@ async def start_user_bot_polling(
                 f"custom_broadcast_{owner_id}"
             ] = {
                 "bot_id": bot_id,
-                "custom_bot": custom_bot,
+                "custom_bot": custom_bot
             }
 
-
             await callback.message.edit_text(
-
-                "📨 إرسال إذاعة\n\n"
+                "📨 إذاعة للمستخدمين\n\n"
                 "أرسل الآن الرسالة التي تريد إرسالها "
-                "إلى جميع مشتركي بوتك.\n\n"
-                "⚠️ حالياً الإذاعة النصية متاحة.",
-
-                reply_markup=back_btn,
+                "إلى مشتركي بوتك.",
+                reply_markup=back_btn
             )
 
-
         # =================================================
-        # المستخدمين
+        # إدارة المستخدمين
         # =================================================
 
         elif action == "cb_users":
@@ -518,9 +524,7 @@ async def start_user_bot_polling(
             try:
 
                 users = (
-                    supabase.table(
-                        "custom_bot_users"
-                    )
+                    supabase.table("custom_bot_users")
                     .select(
                         "full_name, username, user_id"
                     )
@@ -533,72 +537,65 @@ async def start_user_bot_polling(
 
                 users = []
 
-
             if not users:
 
-                u_text = (
+                text = (
                     "👥 إدارة المستخدمين\n\n"
-                    "لا يوجد مشتركون مسجلون حالياً."
+                    "لا يوجد مستخدمون مسجلون حالياً."
                 )
 
             else:
 
                 lines = [
-                    "👥 إدارة المستخدمين",
-                    "",
-                    f"📊 العدد الكلي: {len(users)}",
-                    "",
-                    "━━━━━━━━━━━━━━",
+                    "👥 إدارة المستخدمين\n"
                 ]
 
-                for index, u in enumerate(
+                for index, user in enumerate(
                     users[:25],
-                    start=1,
+                    start=1
                 ):
 
-                    full_name = (
-                        u.get("full_name")
-                        or "بدون اسم"
-                    )
+                    name = user.get(
+                        "full_name"
+                    ) or "غير معروف"
 
-                    username = (
-                        u.get("username")
-                        or "None"
-                    )
+                    username = user.get(
+                        "username"
+                    ) or "None"
 
-                    user_id = u.get(
+                    uid = user.get(
                         "user_id"
                     )
 
-                    username_display = (
-                        f"@{username}"
-                        if username != "None"
-                        else "لا يوجد معرف"
-                    )
+                    if username != "None":
 
-                    lines.append(
-                        f"{index}. 👤 {full_name}\n"
-                        f"   🔗 {username_display}\n"
-                        f"   🆔 `{user_id}`"
-                    )
+                        lines.append(
+                            f"{index}. {name} | @{username}\n"
+                            f"   ID: {uid}"
+                        )
+
+                    else:
+
+                        lines.append(
+                            f"{index}. {name}\n"
+                            f"   ID: {uid}"
+                        )
 
                 if len(users) > 25:
 
                     lines.append(
-                        "\n… يتم عرض أول 25 مستخدم فقط."
+                        "\n... يتم عرض أول 25 مستخدم فقط."
                     )
 
-                u_text = "\n".join(lines)
-
+                text = "\n".join(lines)
 
             await callback.message.edit_text(
-                u_text,
-                reply_markup=back_btn,
+                text,
+                reply_markup=back_btn
             )
 
-
         # =================================================
-        # الترحيب
+        # تغيير الترحيب
         # =================================================
 
         elif action == "cb_welcome":
@@ -609,18 +606,14 @@ async def start_user_bot_polling(
                 "bot_id": bot_id
             }
 
-
             await callback.message.edit_text(
-
-                "👋 إعداد رسالة الترحيب\n\n"
-                "أرسل النص الجديد الآن.\n\n"
+                "👋 تغيير الترحيب\n\n"
+                "أرسل الآن رسالة الترحيب الجديدة.\n\n"
                 "يمكنك استخدام:\n"
-                "• `{name}` = اسم المستخدم\n"
-                "• `{username}` = معرف المستخدم",
-
-                reply_markup=back_btn,
+                "{name} = اسم المستخدم\n"
+                "{username} = معرف المستخدم",
+                reply_markup=back_btn
             )
-
 
         # =================================================
         # الرد التلقائي
@@ -634,16 +627,12 @@ async def start_user_bot_polling(
                 "bot_id": bot_id
             }
 
-
             await callback.message.edit_text(
-
-                "💬 إعداد الرد التلقائي\n\n"
-                "أرسل الآن النص الذي تريد أن يصل "
-                "للمستخدم بعد إرسال رسالته.",
-
-                reply_markup=back_btn,
+                "💬 الرد التلقائي\n\n"
+                "أرسل الآن نص الرد التلقائي "
+                "الذي سيظهر للمستخدم بعد إرسال رسالته.",
+                reply_markup=back_btn
             )
-
 
         # =================================================
         # الحظر
@@ -657,20 +646,16 @@ async def start_user_bot_polling(
                 "bot_id": bot_id
             }
 
-
             await callback.message.edit_text(
-
-                "🚷 إدارة الحظر\n\n"
+                "🚷 الحظر وفك الحظر\n\n"
                 "أرسل آيدي المستخدم.\n\n"
-                "إذا كان محظوراً سيتم فك الحظر، "
+                "إذا كان محظوراً سيتم فك الحظر عنه، "
                 "وإذا لم يكن محظوراً سيتم حظره.",
-
-                reply_markup=back_btn,
+                reply_markup=back_btn
             )
 
-
         # =================================================
-        # إيقاف / تشغيل
+        # تشغيل / إيقاف
         # =================================================
 
         elif action == "cb_toggle":
@@ -678,9 +663,7 @@ async def start_user_bot_polling(
             try:
 
                 res = (
-                    supabase.table(
-                        "enterprise_bots"
-                    )
+                    supabase.table("enterprise_bots")
                     .select("is_active")
                     .eq("id", bot_id)
                     .execute()
@@ -694,16 +677,16 @@ async def start_user_bot_polling(
 
                 new_state = not current_state
 
-                supabase.table(
-                    "enterprise_bots"
-                ).update(
-                    {
-                        "is_active": new_state
-                    }
-                ).eq(
-                    "id",
-                    bot_id,
-                ).execute()
+                (
+                    supabase.table("enterprise_bots")
+                    .update(
+                        {
+                            "is_active": new_state
+                        }
+                    )
+                    .eq("id", bot_id)
+                    .execute()
+                )
 
                 status = (
                     "🟢 يعمل"
@@ -711,19 +694,15 @@ async def start_user_bot_polling(
                     else "⏸ متوقف"
                 )
 
-            except Exception as e:
+            except Exception:
 
-                status = f"❌ خطأ: {e}"
-
+                status = "تعذر تحديث الحالة."
 
             await callback.message.edit_text(
-
-                "⚙️ تم تحديث حالة البوت\n\n"
+                "⏸ تشغيل / إيقاف البوت\n\n"
                 f"الحالة الحالية: {status}",
-
-                reply_markup=back_btn,
+                reply_markup=back_btn
             )
-
 
         # =================================================
         # حذف البوت
@@ -735,30 +714,25 @@ async def start_user_bot_polling(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="تأكيد الحذف نهائياً 🗑",
-                            callback_data=f"confirm_del_{bot_id}",
+                            text="🗑 تأكيد الحذف نهائياً",
+                            callback_data=f"confirm_del_{bot_id}"
                         )
                     ],
                     [
                         InlineKeyboardButton(
                             text="إلغاء 🔙",
-                            callback_data="cb_back",
+                            callback_data="cb_back"
                         )
-                    ],
+                    ]
                 ]
             )
 
-
             await callback.message.edit_text(
-
-                "⚠️ تأكيد حذف البوت\n\n"
-                "سيتم حذف البوت من قاعدة البيانات "
-                "وإيقاف تشغيله.\n\n"
-                "⚠️ العملية لا يمكن التراجع عنها.",
-
-                reply_markup=markup_confirm,
+                "⚠️ حذف البوت\n\n"
+                "هل أنت متأكد من حذف البوت نهائياً؟\n\n"
+                "سيتم حذف تسجيله من المنصة.",
+                reply_markup=markup_confirm
             )
-
 
         # =================================================
         # رجوع
@@ -767,14 +741,11 @@ async def start_user_bot_polling(
         elif action == "cb_back":
 
             await callback.message.edit_text(
-                "⟡ أهلاً بك أيها المالك في لوحة التحكم "
-                "الخاصة ببوتك 💜",
-                reply_markup=get_owner_panel(),
+                "⟡ أهلاً بك أيها المالك في لوحة التحكم الخاصة ببوتك 💜",
+                reply_markup=get_owner_panel()
             )
 
-
         await callback.answer()
-
 
     # =====================================================
     # تأكيد حذف البوت
@@ -782,7 +753,7 @@ async def start_user_bot_polling(
 
     @custom_dp.callback_query(
         F.data.startswith("confirm_del_"),
-        F.message.chat.type == ChatType.PRIVATE,
+        F.message.chat.type == ChatType.PRIVATE
     )
     async def confirm_delete_bot(
         callback: CallbackQuery
@@ -792,29 +763,25 @@ async def start_user_bot_polling(
 
             return await callback.answer(
                 "للمالك فقط",
-                show_alert=True,
+                show_alert=True
             )
-
 
         b_id = int(
             callback.data.split("_")[2]
         )
 
-
         try:
 
-            supabase.table(
-                "enterprise_bots"
-            ).delete().eq(
-                "id",
-                b_id,
-            ).execute()
-
+            (
+                supabase.table("enterprise_bots")
+                .delete()
+                .eq("id", b_id)
+                .execute()
+            )
 
             if b_id in running_custom_bots:
 
                 try:
-
                     await running_custom_bots[
                         b_id
                     ].session.close()
@@ -824,38 +791,34 @@ async def start_user_bot_polling(
 
                 del running_custom_bots[b_id]
 
-
-            # تنظيف روابط الرد
+            # حذف روابط الرد
             for key in list(reply_targets):
 
                 if key[0] == b_id:
 
                     reply_targets.pop(
                         key,
-                        None,
+                        None
                     )
-
 
             await callback.message.edit_text(
                 "🗑 تم حذف البوت نهائياً بنجاح."
             )
 
-
         except Exception as e:
 
             await callback.answer(
                 f"خطأ: {e}",
-                show_alert=True,
+                show_alert=True
             )
 
-
     # =====================================================
-    # حظر / فك حظر من رسالة المستخدم
+    # حظر / فك حظر من زر المعلومات
     # =====================================================
 
     @custom_dp.callback_query(
         F.data.startswith("ban_user_"),
-        F.message.chat.type == ChatType.PRIVATE,
+        F.message.chat.type == ChatType.PRIVATE
     )
     async def inline_ban_action(
         callback: CallbackQuery
@@ -865,83 +828,73 @@ async def start_user_bot_polling(
 
             return await callback.answer(
                 "للمالك فقط",
-                show_alert=True,
+                show_alert=True
             )
-
 
         target_id = int(
             callback.data.split("_")[2]
         )
 
-
         try:
 
             res = (
-                supabase.table(
-                    "custom_bot_bans"
-                )
+                supabase.table("custom_bot_bans")
                 .select("user_id")
                 .eq("bot_id", bot_id)
                 .eq("user_id", target_id)
                 .execute()
             )
 
-
-            # -------------------------------------------------
+            # =============================================
             # فك الحظر
-            # -------------------------------------------------
+            # =============================================
 
             if len(res.data) > 0:
 
-                supabase.table(
-                    "custom_bot_bans"
-                ).delete().eq(
-                    "bot_id",
-                    bot_id,
-                ).eq(
-                    "user_id",
-                    target_id,
-                ).execute()
-
-
-                await callback.answer(
-                    f"✅ تم فك الحظر عن المستخدم:\n{target_id}",
-                    show_alert=True,
+                (
+                    supabase.table("custom_bot_bans")
+                    .delete()
+                    .eq("bot_id", bot_id)
+                    .eq("user_id", target_id)
+                    .execute()
                 )
 
+                await callback.answer(
+                    f"✅ تم فك الحظر عن المستخدم {target_id}",
+                    show_alert=True
+                )
 
-            # -------------------------------------------------
+            # =============================================
             # حظر
-            # -------------------------------------------------
+            # =============================================
 
             else:
 
-                supabase.table(
-                    "custom_bot_bans"
-                ).insert(
-                    {
-                        "bot_id": bot_id,
-                        "user_id": target_id,
-                    }
-                ).execute()
-
-
-                await callback.answer(
-                    f"🚷 تم حظر المستخدم:\n{target_id}",
-                    show_alert=True,
+                (
+                    supabase.table("custom_bot_bans")
+                    .insert(
+                        {
+                            "bot_id": bot_id,
+                            "user_id": target_id
+                        }
+                    )
+                    .execute()
                 )
 
+                await callback.answer(
+                    f"🚷 تم حظر المستخدم {target_id}",
+                    show_alert=True
+                )
 
         except Exception as e:
 
             await callback.answer(
                 f"خطأ: {e}",
-                show_alert=True,
+                show_alert=True
             )
 
-
     # =====================================================
-    # جميع الرسائل الخاصة للبوت
+    # الرسائل الخاصة داخل البوت المصنوع
     # =====================================================
 
     @custom_dp.message(
@@ -963,7 +916,6 @@ async def start_user_bot_polling(
             or "المستخدم"
         )
 
-
         # =================================================
         # المالك
         # =================================================
@@ -971,10 +923,11 @@ async def start_user_bot_polling(
         if u_id == owner_id:
 
             # =============================================
-            # الرد المباشر على رسالة المشترك
+            # الرد الطبيعي باستخدام Telegram Reply
             #
-            # المالك يضغط Reply على الرسالة الأصلية
-            # والبوت يبحث عن صاحبها ويرسل الرد له.
+            # لا يوجد زر رد.
+            # المالك فقط يضغط Reply على الرسالة التي
+            # وصلت إليه من المشترك.
             # =============================================
 
             if message.reply_to_message:
@@ -983,36 +936,36 @@ async def start_user_bot_polling(
                     (
                         bot_id,
                         owner_id,
-                        message.reply_to_message.message_id,
+                        message.reply_to_message.message_id
                     )
                 )
-
 
                 if target_id:
 
                     try:
 
+                        # إرسال نفس رسالة المالك إلى المشترك
                         await custom_bot.copy_message(
                             chat_id=target_id,
                             from_chat_id=owner_id,
-                            message_id=message.message_id,
+                            message_id=message.message_id
                         )
 
-
+                        # حذف الربط بعد نجاح الإرسال
                         reply_targets.pop(
                             (
                                 bot_id,
                                 owner_id,
-                                message.reply_to_message.message_id,
+                                message.reply_to_message.message_id
                             ),
-                            None,
+                            None
                         )
-
 
                         await message.answer(
-                            "✅ تم إرسال الرد إلى المشترك بنجاح."
+                            "✅ تم إرسال الرد للمستخدم بنجاح."
                         )
 
+                        return
 
                     except Exception as e:
 
@@ -1020,15 +973,11 @@ async def start_user_bot_polling(
                             "Failed to send owner reply"
                         )
 
-
                         await message.answer(
-                            "❌ تعذر إرسال الرد إلى المشترك.\n\n"
-                            f"الخطأ: {e}"
+                            f"❌ تعذر إرسال الرد للمستخدم:\n{e}"
                         )
 
-
-                    return
-
+                        return
 
             # =============================================
             # تغيير الترحيب
@@ -1041,27 +990,29 @@ async def start_user_bot_polling(
             ):
 
                 user_sessions.pop(
-                    f"waiting_welcome_{owner_id}"
+                    f"waiting_welcome_{owner_id}",
+                    None
                 )
-
 
                 try:
 
-                    supabase.table(
-                        "custom_bot_settings"
-                    ).upsert(
-                        {
-                            "bot_id": bot_id,
-                            "welcome_text": message.text,
-                        },
-                        on_conflict="bot_id",
-                    ).execute()
-
+                    (
+                        supabase.table(
+                            "custom_bot_settings"
+                        )
+                        .upsert(
+                            {
+                                "bot_id": bot_id,
+                                "welcome_text": message.text
+                            },
+                            on_conflict="bot_id"
+                        )
+                        .execute()
+                    )
 
                     await message.answer(
                         "✅ تم تحديث وحفظ رسالة الترحيب بنجاح."
                     )
-
 
                 except Exception as e:
 
@@ -1069,12 +1020,10 @@ async def start_user_bot_polling(
                         f"❌ خطأ:\n{e}"
                     )
 
-
                 return
 
-
             # =============================================
-            # تغيير الرد التلقائي
+            # الرد التلقائي
             # =============================================
 
             if (
@@ -1084,27 +1033,29 @@ async def start_user_bot_polling(
             ):
 
                 user_sessions.pop(
-                    f"waiting_autoreply_{owner_id}"
+                    f"waiting_autoreply_{owner_id}",
+                    None
                 )
-
 
                 try:
 
-                    supabase.table(
-                        "custom_bot_settings"
-                    ).upsert(
-                        {
-                            "bot_id": bot_id,
-                            "auto_reply": message.text,
-                        },
-                        on_conflict="bot_id",
-                    ).execute()
-
+                    (
+                        supabase.table(
+                            "custom_bot_settings"
+                        )
+                        .upsert(
+                            {
+                                "bot_id": bot_id,
+                                "auto_reply": message.text
+                            },
+                            on_conflict="bot_id"
+                        )
+                        .execute()
+                    )
 
                     await message.answer(
                         "✅ تم تحديث وحفظ الرد التلقائي بنجاح."
                     )
-
 
                 except Exception as e:
 
@@ -1112,12 +1063,10 @@ async def start_user_bot_polling(
                         f"❌ خطأ:\n{e}"
                     )
 
-
                 return
 
-
             # =============================================
-            # الحظر من لوحة التحكم
+            # الحظر عن طريق الآيدي
             # =============================================
 
             if (
@@ -1127,16 +1076,15 @@ async def start_user_bot_polling(
             ):
 
                 user_sessions.pop(
-                    f"waiting_ban_{owner_id}"
+                    f"waiting_ban_{owner_id}",
+                    None
                 )
-
 
                 try:
 
                     target_id = int(
                         message.text.strip()
                     )
-
 
                     res = (
                         supabase.table(
@@ -1148,54 +1096,48 @@ async def start_user_bot_polling(
                         .execute()
                     )
 
-
                     if len(res.data) > 0:
 
-                        supabase.table(
-                            "custom_bot_bans"
-                        ).delete().eq(
-                            "bot_id",
-                            bot_id,
-                        ).eq(
-                            "user_id",
-                            target_id,
-                        ).execute()
-
-
-                        await message.answer(
-                            f"✅ تم فك الحظر عن المستخدم:\n"
-                            f"`{target_id}`"
+                        (
+                            supabase.table(
+                                "custom_bot_bans"
+                            )
+                            .delete()
+                            .eq("bot_id", bot_id)
+                            .eq("user_id", target_id)
+                            .execute()
                         )
 
+                        await message.answer(
+                            f"✅ تم فك الحظر عن المستخدم:\n{target_id}"
+                        )
 
                     else:
 
-                        supabase.table(
-                            "custom_bot_bans"
-                        ).insert(
-                            {
-                                "bot_id": bot_id,
-                                "user_id": target_id,
-                            }
-                        ).execute()
-
-
-                        await message.answer(
-                            f"🚷 تم حظر المستخدم:\n"
-                            f"`{target_id}`"
+                        (
+                            supabase.table(
+                                "custom_bot_bans"
+                            )
+                            .insert(
+                                {
+                                    "bot_id": bot_id,
+                                    "user_id": target_id
+                                }
+                            )
+                            .execute()
                         )
 
+                        await message.answer(
+                            f"🚷 تم حظر المستخدم:\n{target_id}"
+                        )
 
                 except Exception as e:
 
                     await message.answer(
-                        "❌ الآيدي غير صالح.\n\n"
-                        f"الخطأ: {e}"
+                        f"❌ الآيدي غير صحيح:\n{e}"
                     )
 
-
                 return
-
 
             # =============================================
             # الإذاعة
@@ -1212,14 +1154,12 @@ async def start_user_bot_polling(
                         "📨 الإذاعة الحالية تقبل النص فقط."
                     )
 
-
                 user_sessions.pop(
-                    f"custom_broadcast_{owner_id}"
+                    f"custom_broadcast_{owner_id}",
+                    None
                 )
 
-
                 b_text = message.text
-
 
                 try:
 
@@ -1237,15 +1177,11 @@ async def start_user_bot_polling(
 
                     subs = []
 
-
                 sent = 0
 
-
                 status_msg = await message.answer(
-                    "📨 جاري إرسال الإذاعة "
-                    "لمشتركي بوتك..."
+                    "📨 جاري إرسال الإذاعة لمشتركي بوتك..."
                 )
-
 
                 for sub in subs:
 
@@ -1253,7 +1189,7 @@ async def start_user_bot_polling(
 
                         await custom_bot.send_message(
                             sub["user_id"],
-                            b_text,
+                            b_text
                         )
 
                         sent += 1
@@ -1266,54 +1202,37 @@ async def start_user_bot_polling(
 
                         pass
 
-
                 await status_msg.edit_text(
-
                     "✅ تمت الإذاعة بنجاح!\n\n"
-                    f"👥 عدد المستلمين: {sent} مشترك."
-
+                    f"👥 عدد المستلمين: {sent}"
                 )
-
 
                 return
 
-
             # =============================================
-            # رسالة المالك العادية
+            # لا نرسل أي تعليمات عن الرد
             # =============================================
 
             await message.answer(
-
                 "👋 أنت مالك البوت.\n\n"
-                "📩 عندما تصلك رسالة من مشترك:\n"
-                "اضغط «Reply / رد» مباشرةً على "
-                "رسالة المشترك وأرسل ردك.\n\n"
-                "✅ سيتم توصيل الرد للمشترك تلقائياً."
-
+                "استخدم لوحة التحكم الموجودة في الأعلى لإدارة بوتك."
             )
 
             return
 
-
         # =================================================
-        # المستخدمون
+        # المستخدم العادي
         # =================================================
 
         if is_user_banned(u_id):
-
             return
 
-
-        # =================================================
         # تسجيل المستخدم
-        # =================================================
-
         register_custom_user(
             u_id,
             name,
-            uname,
+            uname
         )
-
 
         # =================================================
         # الرد التلقائي
@@ -1330,119 +1249,112 @@ async def start_user_bot_polling(
                 .execute()
             )
 
-
             data_s = (
                 res_s.data[0]
                 if res_s.data
                 else {}
             )
 
-
             auto_reply = (
                 data_s.get("auto_reply")
-                or "اهلا حبيب، شوي و ارد 🌷"
+                or "اهلا حبيب شوي و ارد 🌷."
             )
-
 
         except Exception:
 
             auto_reply = (
-                "اهلا حبيب، شوي و ارد 🌷"
+                "اهلا حبيب شوي و ارد 🌷."
             )
-
 
         # =================================================
         # إرسال رسالة المستخدم للمالك
-        #
-        # لا يوجد زر «رد 💬» هنا.
         # =================================================
 
         try:
 
-            copied_message = (
-                await custom_bot.copy_message(
-                    chat_id=owner_id,
-                    from_chat_id=u_id,
-                    message_id=message.message_id,
-                )
+            copied = await custom_bot.copy_message(
+                chat_id=owner_id,
+                from_chat_id=u_id,
+                message_id=message.message_id
             )
 
-
-            # ------------------------------------------------
-            # حفظ علاقة رسالة المالك بالمستخدم
-            # ------------------------------------------------
+            # =================================================
+            # أهم جزء:
+            #
+            # نخزن ID الرسالة التي وصلت للمالك.
+            #
+            # عندما المالك يسوي Reply عليها مباشرة،
+            # نعرف المستخدم الذي أرسلها.
+            #
+            # لا يوجد زر «رد».
+            # لا يوجد ForceReply.
+            # لا يوجد نسخ جديد للرسالة.
+            # =================================================
 
             reply_targets[
                 (
                     bot_id,
                     owner_id,
-                    copied_message.message_id,
+                    copied.message_id
                 )
             ] = u_id
-
 
         except Exception as e:
 
             logger.error(
-                "Failed to copy user message "
-                f"to owner "
+                "Failed to copy user message to owner "
                 f"(bot={bot_id}, user={u_id}): {e}"
             )
 
+        # =================================================
+        # معلومات المشترك
+        #
+        # بسيطة ومرتبة مثل النسخة القديمة
+        # بدون شرح طريقة الرد
+        # وبدون زر رد
+        # =================================================
+
+        if uname != "None":
+
+            info_text = (
+                "👤 معلومات المشترك:\n\n"
+                f"• الاسم: {name}\n"
+                f"• المعرف: @{uname}\n"
+                f"• الآيدي: {u_id}"
+            )
+
+        else:
+
+            info_text = (
+                "👤 معلومات المشترك:\n\n"
+                f"• الاسم: {name}\n"
+                "• المعرف: لا يوجد\n"
+                f"• الآيدي: {u_id}"
+            )
 
         # =================================================
-        # عرض معلومات المشترك
+        # زر الحظر فقط
         # =================================================
-
-        username_display = (
-            f"@{uname}"
-            if uname != "None"
-            else "لا يوجد معرف"
-        )
-
 
         info_markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
                         text="🚷 حظر / فك الحظر",
-                        callback_data=f"ban_user_{u_id}",
+                        callback_data=f"ban_user_{u_id}"
                     )
                 ]
             ]
         )
 
-
-        info_text = (
-
-            "╭──────────────╮\n"
-            "   👤 معلومات المشترك\n"
-            "╰──────────────╯\n\n"
-
-            f"👤 الاسم: {name}\n"
-            f"🔗 المعرف: {username_display}\n"
-            f"🆔 الآيدي: `{u_id}`\n\n"
-
-            "━━━━━━━━━━━━━━━━\n"
-
-            "💬 طريقة الرد:\n"
-            "اضغط Reply / رد مباشرةً على "
-            "رسالة المشترك بالأعلى وأرسل رسالتك.\n\n"
-
-            "✅ سيتم إرسال الرد إليه تلقائياً."
-
-        )
-
-
         await custom_bot.send_message(
             chat_id=owner_id,
             text=info_text,
-            reply_markup=info_markup,
+            reply_markup=info_markup
         )
 
-
         # =================================================
-        # زر صنع بوت
+        # زر الصانع للمستخدم
         # =================================================
 
         promo_markup = InlineKeyboardMarkup(
@@ -1450,22 +1362,16 @@ async def start_user_bot_polling(
                 [
                     InlineKeyboardButton(
                         text="🤖 صنع بوتك الخاص من هنا ⚡",
-                        url=f"https://t.me/{MAKER_BOT_USERNAME}",
+                        url=f"https://t.me/{MAKER_BOT_USERNAME}"
                     )
                 ]
             ]
         )
 
-
-        # =================================================
-        # الرد التلقائي للمستخدم
-        # =================================================
-
         await message.answer(
             auto_reply,
-            reply_markup=promo_markup,
+            reply_markup=promo_markup
         )
-
 
     # =====================================================
     # تشغيل البوت
@@ -1477,12 +1383,15 @@ async def start_user_bot_polling(
             bot_id
         ] = custom_bot
 
+        logger.info(
+            f"Starting custom bot @{bot_username} "
+            f"(ID: {bot_id})"
+        )
 
         await custom_dp.start_polling(
             custom_bot,
-            skip_updates=True,
+            skip_updates=True
         )
-
 
     except Exception as e:
 
@@ -1490,37 +1399,21 @@ async def start_user_bot_polling(
             f"Custom bot {bot_id} error: {e}"
         )
 
-
     finally:
 
         try:
-
             await custom_bot.session.close()
-
         except Exception:
             pass
 
-
         running_custom_bots.pop(
             bot_id,
-            None,
+            None
         )
 
 
-        # تنظيف روابط الرد الخاصة بهذا البوت
-
-        for key in list(reply_targets):
-
-            if key[0] == bot_id:
-
-                reply_targets.pop(
-                    key,
-                    None,
-                )
-
-
 # =========================================================
-# إعادة تشغيل جميع البوتات الفعالة
+# استئناف البوتات بعد إعادة تشغيل الصانع
 # =========================================================
 
 async def resume_all_active_bots():
@@ -1528,14 +1421,11 @@ async def resume_all_active_bots():
     try:
 
         res = (
-            supabase.table(
-                "enterprise_bots"
-            )
+            supabase.table("enterprise_bots")
             .select("*")
             .eq("is_active", True)
             .execute()
         )
-
 
         for b in res.data:
 
@@ -1546,10 +1436,9 @@ async def resume_all_active_bots():
                         b["id"],
                         b["bot_token"],
                         b["owner_id"],
-                        b["bot_username"],
+                        b["bot_username"]
                     )
                 )
-
 
     except Exception as e:
 
@@ -1559,7 +1448,46 @@ async def resume_all_active_bots():
 
 
 # =========================================================
-# START للبوت الرئيسي
+# القائمة الرئيسية للصانع
+# =========================================================
+
+async def send_home(
+    message: Message,
+    user_id: int
+):
+
+    if user_id == DEV_ID:
+
+        text = (
+            "⚙️ لوحة تحكم مالك المنصة الرئيسي\n\n"
+            "أهلاً بك، لديك تحكم كامل بالمنصة."
+        )
+
+    else:
+
+        name = (
+            message.from_user.first_name
+            or "المستخدم"
+        )
+
+        text = (
+            f"• اهلا بك ({name}) 👋\n\n"
+            "• في البوت الرسمي لصنع بوتات السايت والتواصل 📌\n\n"
+            "• أنشئ بوتك بسهولة، واستقبل رسائل المستخدمين "
+            "بهوية مجهولة، وتحكم بالبوت من لوحة الإدارة ⚡\n\n"
+            "• البوتات تعمل بشكل مستمر حسب حالة البوت في المنصة.\n\n"
+            "━━━━━━━━━━━━━━━━━━\n\n"
+            "🤖 ابدأ الآن وأنشئ بوتك الخاص مجاناً."
+        )
+
+    await message.answer(
+        text,
+        reply_markup=get_main_menu(user_id)
+    )
+
+
+# =========================================================
+# /start للصانع
 # =========================================================
 
 @dp.message(Command("start"))
@@ -1569,43 +1497,36 @@ async def start_handler(
 
     user_id = message.from_user.id
 
-
-    # =====================================================
-    # حظر
-    # =====================================================
-
+    # فحص الحظر
     if is_banned(user_id):
 
         return await message.answer(
             "عذراً، تم حظرك من استخدام المنصة."
         )
 
-
-    # =====================================================
-    # تسجيل مستخدم المنصة
-    # =====================================================
-
+    # تسجيل المستخدم
     try:
 
-        supabase.table(
-            "maker_users"
-        ).upsert(
-            {
-                "user_id": user_id,
-                "username": (
-                    message.from_user.username
-                    or "None"
-                ),
-                "full_name": (
-                    message.from_user.first_name
-                ),
-            }
-        ).execute()
+        (
+            supabase.table("maker_users")
+            .upsert(
+                {
+                    "user_id": user_id,
+                    "username": (
+                        message.from_user.username
+                        or "None"
+                    ),
+                    "full_name": (
+                        message.from_user.first_name
+                        or "المستخدم"
+                    ),
+                }
+            )
+            .execute()
+        )
 
     except Exception:
-
         pass
-
 
     # =====================================================
     # المطور
@@ -1614,50 +1535,16 @@ async def start_handler(
     if user_id == DEV_ID:
 
         text = (
-
             "⚙️ لوحة تحكم مالك المنصة الرئيسي\n\n"
-            "👑 أهلاً بك.\n"
-            "تحكم كامل وخيارات واسعة لإدارة المنصة."
-
+            "أهلاً بك، تحكم كامل وخيارات واسعة لإدارة المنصة."
         )
-
-
-        markup = InlineKeyboardMarkup(
-            inline_keyboard=[
-
-                [
-                    InlineKeyboardButton(
-                        text="📊 إحصائيات المنصة",
-                        callback_data="dev_stats",
-                    ),
-                    InlineKeyboardButton(
-                        text="📨 إذاعة عامة",
-                        callback_data="dev_broadcast",
-                    ),
-                ],
-
-                [
-                    InlineKeyboardButton(
-                        text="🤖 إدارة البوتات",
-                        callback_data="dev_all_bots",
-                    ),
-                    InlineKeyboardButton(
-                        text="🚷 إدارة الحظر",
-                        callback_data="dev_ban_menu",
-                    ),
-                ],
-
-            ]
-        )
-
 
         await message.answer(
             text,
-            reply_markup=markup,
+            reply_markup=get_main_menu(user_id)
         )
 
         return
-
 
     # =====================================================
     # المستخدم العادي
@@ -1668,62 +1555,18 @@ async def start_handler(
         or "المستخدم"
     )
 
-
     text = (
-
-        f"• اهلا بك ({name}) .\n"
-        "• في البوت الرسمي لصنع بوتات السايت 📌\n"
-        "• يحتوي البوت الذي يتم صنعه على "
-        "مميزات متميزة وسرعة عالية\n"
-        "• ويتميز بالاستقرار وعدم التوقف 📢\n\n"
-
+        f"• اهلا بك ({name}) 👋\n\n"
+        "• في البوت الرسمي لصنع بوتات السايت والتواصل 📌\n\n"
+        "• أنشئ بوتك بسهولة، واستقبل رسائل المستخدمين "
+        "بهوية مجهولة، وتحكم بالبوت من لوحة الإدارة ⚡\n\n"
         "━━━━━━━━━━━━━━━━━━\n\n"
-
-        f"🤖 عجبك البوت؟\n"
-        f"اصنع بوتك الخاص مجاناً!\n"
-        f"@{MAKER_BOT_USERNAME}"
-
+        "🤖 ابدأ الآن وأنشئ بوتك الخاص مجاناً."
     )
-
-
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-
-            [
-                InlineKeyboardButton(
-                    text="🤖 صنع بوت جديد",
-                    callback_data="create_new_bot",
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="📋 قائمة بوتاتك",
-                    callback_data="my_custom_bots",
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="❓ كيف اصنع بوت؟",
-                    callback_data="bot_info",
-                )
-            ],
-
-            [
-                InlineKeyboardButton(
-                    text="🌐 تغيير اللغة",
-                    callback_data="change_lang",
-                )
-            ],
-
-        ]
-    )
-
 
     await message.answer(
         text,
-        reply_markup=markup,
+        reply_markup=get_main_menu(user_id)
     )
 
 
@@ -1740,39 +1583,35 @@ async def step_create_bot(
 
     user_id = callback.from_user.id
 
-
     user_sessions[user_id] = {
         "state": "waiting_for_token"
     }
-
 
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="إلغاء والعودة 🔙",
-                    callback_data="back_home",
+                    callback_data="back_home"
                 )
             ]
         ]
     )
 
-
     await callback.message.edit_text(
-
-        "🤖 إنشاء بوت تواصل جديد\n\n"
-        "أرسل الآن توكن البوت Bot Token "
-        "الخاص بك من @BotFather:",
-
-        reply_markup=markup,
+        "🤖 إنشاء بوت جديد\n\n"
+        "أرسل الآن توكن البوت Bot Token الخاص بك "
+        "من @BotFather.\n\n"
+        "مثال:\n"
+        "123456789:AAxxxxxxxxxxxxxxxxxxxx",
+        reply_markup=markup
     )
-
 
     await callback.answer()
 
 
 # =========================================================
-# معالجة النصوص للبوت الرئيسي
+# معالجة الرسائل النصية للصانع
 # =========================================================
 
 @dp.message(F.text)
@@ -1782,41 +1621,34 @@ async def text_processor(
 
     user_id = message.from_user.id
 
-
     if is_banned(user_id):
-
         return
-
 
     session = user_sessions.get(
         user_id,
         {}
     )
 
-
     state = session.get(
         "state"
     )
 
-
     # =====================================================
-    # إنشاء بوت
+    # إنشاء بوت بواسطة Token
     # =====================================================
 
     if state == "waiting_for_token":
 
         token = message.text.strip()
 
-
         user_sessions.pop(
             user_id,
-            None,
+            None
         )
 
-
-        # -------------------------------------------------
-        # التحقق من التوكن
-        # -------------------------------------------------
+        # =================================================
+        # فحص التوكن
+        # =================================================
 
         try:
 
@@ -1824,12 +1656,9 @@ async def text_processor(
                 token=token
             )
 
-
             me = await temp_bot.get_me()
 
-
             await temp_bot.session.close()
-
 
         except Exception as e:
 
@@ -1837,27 +1666,29 @@ async def text_processor(
                 inline_keyboard=[
                     [
                         InlineKeyboardButton(
-                            text="إعادة المحاولة 🔄",
-                            callback_data="create_new_bot",
+                            text="🔄 إعادة المحاولة",
+                            callback_data="create_new_bot"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            text="رجوع 🔙",
+                            callback_data="back_home"
                         )
                     ]
                 ]
             )
 
-
             return await message.answer(
-
                 "❌ التوكن غير صالح.\n\n"
-                f"الخطأ:\n`{e}`\n\n"
+                f"التفاصيل:\n{e}\n\n"
                 "تأكد من التوكن وأرسله مرة أخرى.",
-
-                reply_markup=markup,
+                reply_markup=markup
             )
 
-
-        # -------------------------------------------------
-        # حفظ البوت
-        # -------------------------------------------------
+        # =================================================
+        # إضافة البوت إلى Supabase
+        # =================================================
 
         try:
 
@@ -1877,13 +1708,11 @@ async def text_processor(
                 .execute()
             )
 
-
             new_bot_id = (
                 res.data[0]["id"]
                 if res.data
                 else None
             )
-
 
             if new_bot_id:
 
@@ -1892,49 +1721,47 @@ async def text_processor(
                         new_bot_id,
                         token,
                         user_id,
-                        me.username,
+                        me.username
                     )
                 )
-
 
         except Exception as e:
 
             return await message.answer(
-                "❌ خطأ في قاعدة البيانات:\n"
-                f"`{e}`"
+                "❌ حدث خطأ أثناء حفظ البوت:\n\n"
+                f"{e}"
             )
 
-
-        # -------------------------------------------------
+        # =================================================
         # نجاح الإنشاء
-        # -------------------------------------------------
+        # =================================================
 
         markup = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="📋 الذهاب إلى قائمة بوتاتك",
-                        callback_data="my_custom_bots",
+                        text="📋 الذهاب إلى بوتاتي",
+                        callback_data="my_custom_bots"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        text="🏠 القائمة الرئيسية",
+                        callback_data="back_home"
                     )
                 ]
             ]
         )
 
-
         await message.answer(
-
             "✅ تم إنشاء وتشغيل بوتك بنجاح!\n\n"
-
-            f"🤖 اسم البوت: {me.first_name}\n"
+            f"🤖 الاسم: {me.first_name}\n"
             f"🔗 المعرف: @{me.username}\n\n"
-
-            "📩 يمكنك الآن استقبال رسائل "
-            "المشتركين والرد عليهم مباشرةً "
-            "باستخدام Reply.",
-
-            reply_markup=markup,
+            "يمكنك الآن الدخول إلى بوتك وإرسال رسائل تجريبية.",
+            reply_markup=markup
         )
 
+        return
 
     # =====================================================
     # إذاعة المطور
@@ -1947,12 +1774,10 @@ async def text_processor(
 
         user_sessions.pop(
             user_id,
-            None,
+            None
         )
 
-
         b_text = message.text
-
 
         try:
 
@@ -1969,14 +1794,11 @@ async def text_processor(
 
             users = []
 
-
         sent = 0
-
 
         status = await message.answer(
             "📨 جاري تنفيذ الإذاعة العامة..."
         )
-
 
         for u in users:
 
@@ -1984,29 +1806,23 @@ async def text_processor(
 
                 await bot.send_message(
                     u["user_id"],
-                    "📢 إشعار إداري عام من المنصة:\n\n"
-                    f"{b_text}",
+                    "📢 إشعار إداري من المنصة:\n\n"
+                    f"{b_text}"
                 )
 
-
                 sent += 1
-
 
                 await asyncio.sleep(
                     0.03
                 )
 
-
             except Exception:
 
                 pass
 
-
         await status.edit_text(
-
             "✅ تمت الإذاعة العامة بنجاح!\n\n"
-            f"👥 عدد المستلمين: {sent} مستخدم."
-
+            f"👥 عدد المستلمين: {sent}"
         )
 
 
@@ -2023,7 +1839,6 @@ async def list_user_bots(
 
     user_id = callback.from_user.id
 
-
     try:
 
         res = (
@@ -2035,14 +1850,11 @@ async def list_user_bots(
             .execute()
         )
 
-
         bots = res.data
-
 
     except Exception:
 
         bots = []
-
 
     # =====================================================
     # لا توجد بوتات
@@ -2052,41 +1864,36 @@ async def list_user_bots(
 
         markup = InlineKeyboardMarkup(
             inline_keyboard=[
-
                 [
                     InlineKeyboardButton(
                         text="🤖 صنع بوت جديد",
-                        callback_data="create_new_bot",
+                        callback_data="create_new_bot"
                     )
                 ],
-
                 [
                     InlineKeyboardButton(
-                        text="القائمة الرئيسية 🔙",
-                        callback_data="back_home",
+                        text="🏠 القائمة الرئيسية",
+                        callback_data="back_home"
                     )
-                ],
-
+                ]
             ]
         )
 
-
-        return await callback.message.edit_text(
-
+        await callback.message.edit_text(
             "📋 بوتاتك\n\n"
-            "لا توجد أي بوتات مصنوعة "
-            "بواسطة حسابك حتى الآن.",
-
-            reply_markup=markup,
+            "لا توجد أي بوتات مصنوعة بواسطة حسابك حتى الآن.",
+            reply_markup=markup
         )
 
+        await callback.answer()
+
+        return
 
     # =====================================================
-    # البوتات
+    # عرض البوتات
     # =====================================================
 
     buttons = []
-
 
     for b in bots:
 
@@ -2096,49 +1903,40 @@ async def list_user_bots(
             else "⏸ متوقف"
         )
 
-
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=(
-                        f"{status} | "
-                        f"@{b['bot_username']}"
-                    ),
-                    callback_data=(
-                        f"manage_bot_{b['id']}"
-                    ),
+                    text=f"{status} | @{b['bot_username']}",
+                    callback_data=f"manage_bot_{b['id']}"
                 )
             ]
         )
 
-
     buttons.append(
-
         [
             InlineKeyboardButton(
                 text="🤖 صنع بوت آخر",
-                callback_data="create_new_bot",
-            ),
-
-            InlineKeyboardButton(
-                text="🔙 الرئيسية",
-                callback_data="back_home",
-            ),
+                callback_data="create_new_bot"
+            )
         ]
-
     )
 
+    buttons.append(
+        [
+            InlineKeyboardButton(
+                text="🏠 القائمة الرئيسية",
+                callback_data="back_home"
+            )
+        ]
+    )
 
     await callback.message.edit_text(
-
-        "📋 بوتاتك المصنوعة\n\n"
+        "📋 بوتاتك\n\n"
         "اختر البوت الذي تريد إدارته:",
-
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=buttons
-        ),
+        )
     )
-
 
     await callback.answer()
 
@@ -2158,7 +1956,6 @@ async def manage_single_bot(
         callback.data.split("_")[2]
     )
 
-
     try:
 
         res = (
@@ -2167,81 +1964,61 @@ async def manage_single_bot(
             )
             .select("*")
             .eq("id", bot_id)
+            .eq("owner_id", callback.from_user.id)
             .execute()
         )
-
 
         if not res.data:
 
             return await callback.answer(
                 "البوت غير موجود!",
-                show_alert=True,
+                show_alert=True
             )
 
-
         b_data = res.data[0]
-
 
     except Exception:
 
         return await callback.answer(
-            "خطأ في الاتصال!",
-            show_alert=True,
+            "خطأ في الاتصال بقاعدة البيانات!",
+            show_alert=True
         )
 
-
     text = (
-
         f"🤖 إدارة البوت\n\n"
-
-        f"━━━━━━━━━━━━━━\n"
-        f"🔗 المعرف: @{b_data['bot_username']}\n"
-        f"👤 الاسم: {b_data['bot_name']}\n"
-        f"📊 الحالة: "
-        f"{'🟢 يعمل' if b_data['is_active'] else '⏸ متوقف'}\n"
-        f"━━━━━━━━━━━━━━\n\n"
-
-        "📩 نظام الرد:\n"
-        "الرد يتم مباشرة من خلال Reply "
-        "على رسالة المشترك."
-
+        f"• الاسم: {b_data['bot_name']}\n"
+        f"• المعرف: @{b_data['bot_username']}\n"
+        f"• الحالة: "
+        f"{'🟢 يعمل' if b_data['is_active'] else '⏸ متوقف'}"
     )
-
 
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
-
             [
                 InlineKeyboardButton(
                     text="🗑 حذف البوت نهائياً",
-                    callback_data=(
-                        f"delete_bot_{bot_id}"
-                    ),
+                    callback_data=f"delete_bot_{bot_id}"
                 )
             ],
-
             [
                 InlineKeyboardButton(
                     text="العودة لقائمة بوتاتي 🔙",
-                    callback_data="my_custom_bots",
+                    callback_data="my_custom_bots"
                 )
-            ],
-
+            ]
         ]
     )
 
-
     await callback.message.edit_text(
         text,
-        reply_markup=markup,
+        reply_markup=markup
     )
-
 
     await callback.answer()
 
 
 # =========================================================
-# حذف بوت المستخدم
+# حذف بوت من قائمة المستخدم
 # =========================================================
 
 @dp.callback_query(
@@ -2255,9 +2032,27 @@ async def delete_bot_action(
         callback.data.split("_")[2]
     )
 
-
     try:
 
+        # التأكد أن البوت يعود لنفس المستخدم
+        check = (
+            supabase.table(
+                "enterprise_bots"
+            )
+            .select("id")
+            .eq("id", bot_id)
+            .eq("owner_id", callback.from_user.id)
+            .execute()
+        )
+
+        if not check.data:
+
+            return await callback.answer(
+                "هذا البوت غير تابع لك.",
+                show_alert=True
+            )
+
+        # إيقاف البوت
         if bot_id in running_custom_bots:
 
             try:
@@ -2269,53 +2064,49 @@ async def delete_bot_action(
             except Exception:
                 pass
 
-
             del running_custom_bots[
                 bot_id
             ]
 
+        # حذف من قاعدة البيانات
+        (
+            supabase.table(
+                "enterprise_bots"
+            )
+            .delete()
+            .eq("id", bot_id)
+            .execute()
+        )
 
-        supabase.table(
-            "enterprise_bots"
-        ).delete().eq(
-            "id",
-            bot_id,
-        ).execute()
-
-
-        # تنظيف روابط الرد
-
+        # حذف روابط الرد
         for key in list(reply_targets):
 
             if key[0] == bot_id:
 
                 reply_targets.pop(
                     key,
-                    None,
+                    None
                 )
 
-
         await callback.answer(
-            "✅ تم حذف البوت بنجاح.",
-            show_alert=True,
+            "🗑 تم حذف البوت بنجاح.",
+            show_alert=True
         )
-
 
         await list_user_bots(
             callback
         )
 
-
     except Exception as e:
 
         await callback.answer(
             f"خطأ: {e}",
-            show_alert=True,
+            show_alert=True
         )
 
 
 # =========================================================
-# إدارة جميع البوتات للمطور
+# إدارة جميع بوتات المنصة للمطور
 # =========================================================
 
 @dp.callback_query(
@@ -2326,9 +2117,7 @@ async def dev_all_bots_handler(
 ):
 
     if callback.from_user.id != DEV_ID:
-
         return
-
 
     try:
 
@@ -2340,41 +2129,29 @@ async def dev_all_bots_handler(
             .execute()
         )
 
-
         bots = res.data
-
 
     except Exception:
 
         bots = []
 
-
     if not bots:
 
-        markup = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text="رجوع 🔙",
-                        callback_data="back_home",
-                    )
-                ]
-            ]
-        )
-
-
-        return await callback.message.edit_text(
-
+        await callback.message.edit_text(
+            "🤖 إدارة البوتات\n\n"
             "لا توجد بوتات مسجلة في المنصة حالياً.",
-
-            reply_markup=markup,
+            reply_markup=get_back_button(
+                "back_home"
+            )
         )
 
+        await callback.answer()
+
+        return
 
     buttons = []
 
-
-    for b in bots[:20]:
+    for b in bots[:30]:
 
         status = (
             "🟢"
@@ -2382,47 +2159,37 @@ async def dev_all_bots_handler(
             else "⏸"
         )
 
-
         buttons.append(
-
             [
                 InlineKeyboardButton(
                     text=(
                         f"{status} "
                         f"@{b['bot_username']} "
-                        f"(Owner: {b['owner_id']})"
+                        f"| {b['owner_id']}"
                     ),
                     callback_data=(
                         f"dev_del_bot_{b['id']}"
-                    ),
+                    )
                 )
             ]
-
         )
 
-
     buttons.append(
-
         [
             InlineKeyboardButton(
                 text="رجوع 🔙",
-                callback_data="back_home",
+                callback_data="back_home"
             )
         ]
-
     )
-
 
     await callback.message.edit_text(
-
         "🤖 إدارة جميع بوتات المنصة\n\n"
-        "اضغط على البوت لحذفه كأدمن:",
-
+        "اضغط على البوت لحذفه من المنصة:",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=buttons
-        ),
+        )
     )
-
 
     await callback.answer()
 
@@ -2439,14 +2206,11 @@ async def dev_del_bot_action(
 ):
 
     if callback.from_user.id != DEV_ID:
-
         return
-
 
     bot_id = int(
         callback.data.split("_")[3]
     )
-
 
     try:
 
@@ -2461,21 +2225,18 @@ async def dev_del_bot_action(
             except Exception:
                 pass
 
-
             del running_custom_bots[
                 bot_id
             ]
 
-
-        supabase.table(
-            "enterprise_bots"
-        ).delete().eq(
-            "id",
-            bot_id,
-        ).execute()
-
-
-        # تنظيف روابط الرد
+        (
+            supabase.table(
+                "enterprise_bots"
+            )
+            .delete()
+            .eq("id", bot_id)
+            .execute()
+        )
 
         for key in list(reply_targets):
 
@@ -2483,26 +2244,23 @@ async def dev_del_bot_action(
 
                 reply_targets.pop(
                     key,
-                    None,
+                    None
                 )
 
-
         await callback.answer(
-            "✅ تم حذف البوت من المنصة بنجاح.",
-            show_alert=True,
+            "🗑 تم حذف البوت من المنصة بنجاح.",
+            show_alert=True
         )
-
 
         await dev_all_bots_handler(
             callback
         )
 
-
     except Exception as e:
 
         await callback.answer(
             f"خطأ: {e}",
-            show_alert=True,
+            show_alert=True
         )
 
 
@@ -2518,9 +2276,7 @@ async def dev_stats_handler(
 ):
 
     if callback.from_user.id != DEV_ID:
-
         return
-
 
     try:
 
@@ -2533,7 +2289,6 @@ async def dev_stats_handler(
             .data
         )
 
-
         bots = len(
             supabase.table(
                 "enterprise_bots"
@@ -2543,42 +2298,25 @@ async def dev_stats_handler(
             .data
         )
 
-
     except Exception:
 
         users = 0
         bots = 0
 
-
     text = (
-
         "📊 إحصائيات المنصة\n\n"
-
-        "━━━━━━━━━━━━━━\n"
         f"👥 إجمالي المستخدمين: {users}\n"
         f"🤖 إجمالي البوتات: {bots}\n"
-        "━━━━━━━━━━━━━━"
-
+        f"🟢 البوتات العاملة حالياً: "
+        f"{len(running_custom_bots)}"
     )
-
-
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="رجوع 🔙",
-                    callback_data="back_home",
-                )
-            ]
-        ]
-    )
-
 
     await callback.message.edit_text(
         text,
-        reply_markup=markup,
+        reply_markup=get_back_button(
+            "back_home"
+        )
     )
-
 
     await callback.answer()
 
@@ -2595,42 +2333,37 @@ async def dev_broadcast_handler(
 ):
 
     if callback.from_user.id != DEV_ID:
-
         return
 
-
-    user_sessions[DEV_ID] = {
+    user_sessions[
+        DEV_ID
+    ] = {
         "state": "dev_broadcasting"
     }
-
 
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="إلغاء 🔙",
-                    callback_data="back_home",
+                    callback_data="back_home"
                 )
             ]
         ]
     )
 
-
     await callback.message.edit_text(
-
         "📨 الإذاعة العامة\n\n"
-        "أرسل الآن نص الإذاعة "
-        "لجميع مستخدمي المنصة:",
-
-        reply_markup=markup,
+        "أرسل الآن النص الذي تريد إرساله "
+        "إلى مستخدمي المنصة.",
+        reply_markup=markup
     )
-
 
     await callback.answer()
 
 
 # =========================================================
-# إدارة الحظر للمطور
+# حظر المنصة
 # =========================================================
 
 @dp.callback_query(
@@ -2641,36 +2374,21 @@ async def dev_ban_menu(
 ):
 
     if callback.from_user.id != DEV_ID:
-
         return
 
-
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="رجوع 🔙",
-                    callback_data="back_home",
-                )
-            ]
-        ]
-    )
-
-
     await callback.message.edit_text(
-
-        "🚷 إدارة الحظر العامة\n\n"
-        "نظام الحظر العام للمنصة نشط ومؤمن.",
-
-        reply_markup=markup,
+        "🚷 إدارة حظر المنصة\n\n"
+        "نظام الحظر العام للمنصة متاح للمطور.",
+        reply_markup=get_back_button(
+            "back_home"
+        )
     )
-
 
     await callback.answer()
 
 
 # =========================================================
-# معلومات البوت
+# كيفية صنع بوت
 # =========================================================
 
 @dp.callback_query(
@@ -2680,37 +2398,69 @@ async def bot_info(
     callback: CallbackQuery
 ):
 
+    text = (
+        "❓ كيفية صنع بوت السايت\n\n"
+
+        "اتبع الخطوات التالية 👇\n\n"
+
+        "1️⃣ افتح بوت BotFather الرسمي.\n\n"
+
+        "2️⃣ اضغط Start أو أرسل:\n"
+        "/newbot\n\n"
+
+        "3️⃣ اكتب اسم البوت الذي تريده.\n"
+        "مثال:\n"
+        "Mustafa Site\n\n"
+
+        "4️⃣ بعد ذلك سيطلب منك Username للبوت.\n"
+        "يجب أن ينتهي بـ bot.\n"
+        "مثال:\n"
+        "MustafaSiteBot\n\n"
+
+        "5️⃣ سيعطيك BotFather توكن البوت.\n"
+        "انسخ التوكن بالكامل.\n\n"
+
+        "6️⃣ ارجع إلى هذا الصانع واضغط:\n"
+        "🤖 صنع بوت جديد\n\n"
+
+        "7️⃣ الصق التوكن هنا وأرسله.\n\n"
+
+        "8️⃣ سيتم فحص التوكن وتشغيل البوت تلقائياً.\n\n"
+
+        "✅ بعد نجاح الإنشاء، ادخل إلى البوت "
+        "وأرسل /start وابدأ باستخدام السايت.\n\n"
+
+        "⚠️ مهم جداً:\n"
+        "لا ترسل توكن البوت لأي شخص، لأنه يعتبر مفتاح التحكم الكامل بالبوت."
+    )
+
     markup = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
+                    text="🤖 فتح BotFather",
+                    url="https://t.me/BotFather"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🤖 صنع بوت الآن",
+                    callback_data="create_new_bot"
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text="رجوع 🔙",
-                    callback_data="back_home",
+                    callback_data="back_home"
                 )
             ]
         ]
     )
 
-
     await callback.message.edit_text(
-
-        "🤖 عن المنصة\n\n"
-
-        "هذه المنصة مخصصة لصناعة "
-        "بوتات التواصل والسايت الاحترافية.\n\n"
-
-        "⚡ سرعة عالية\n"
-        "🟢 استقرار\n"
-        "📩 نظام رد مباشر باستخدام Reply\n"
-        "👥 إدارة المشتركين\n"
-        "🚷 نظام حظر\n"
-        "📨 إذاعة\n"
-        "👋 رسالة ترحيب\n"
-        "💬 رد تلقائي",
-
-        reply_markup=markup,
+        text,
+        reply_markup=markup
     )
-
 
     await callback.answer()
 
@@ -2727,13 +2477,13 @@ async def change_lang(
 ):
 
     await callback.answer(
-        "🇮🇶 اللغة الحالية هي العربية",
-        show_alert=True,
+        "🇮🇶 اللغة الحالية: العربية",
+        show_alert=True
     )
 
 
 # =========================================================
-# العودة للرئيسية
+# الرجوع للقائمة الرئيسية
 # =========================================================
 
 @dp.callback_query(
@@ -2743,35 +2493,52 @@ async def back_home(
     callback: CallbackQuery
 ):
 
-    fake_message = callback.message
+    user_id = callback.from_user.id
 
-    fake_message.from_user = (
-        callback.from_user
+    if user_id == DEV_ID:
+
+        text = (
+            "⚙️ لوحة تحكم مالك المنصة الرئيسي\n\n"
+            "أهلاً بك، تحكم كامل وخيارات واسعة لإدارة المنصة."
+        )
+
+    else:
+
+        name = (
+            callback.from_user.first_name
+            or "المستخدم"
+        )
+
+        text = (
+            f"• اهلا بك ({name}) 👋\n\n"
+            "• في البوت الرسمي لصنع بوتات السايت والتواصل 📌\n\n"
+            "• أنشئ بوتك بسهولة، واستقبل رسائل المستخدمين "
+            "بهوية مجهولة، وتحكم بالبوت من لوحة الإدارة ⚡\n\n"
+            "━━━━━━━━━━━━━━━━━━\n\n"
+            "🤖 ابدأ الآن وأنشئ بوتك الخاص مجاناً."
+        )
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=get_main_menu(
+            user_id
+        )
     )
-
-
-    await start_handler(
-        fake_message
-    )
-
 
     await callback.answer()
 
 
 # =========================================================
-# MAIN
+# التشغيل الرئيسي
 # =========================================================
 
 async def main():
 
     await resume_all_active_bots()
 
-
     logger.info(
-        "Ultimate Production Bot Maker "
-        "started successfully!"
+        "Ultimate Production Bot Maker started successfully!"
     )
-
 
     await dp.start_polling(
         bot
@@ -2779,7 +2546,7 @@ async def main():
 
 
 # =========================================================
-# التشغيل
+# Start
 # =========================================================
 
 if __name__ == "__main__":
